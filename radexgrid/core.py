@@ -51,8 +51,8 @@ class RadexGrid(object):
     geometry : str
         Geometry of emitting region. Valid options include:
             'sphere' : Uniform sphere
-            'lvg'    : Large Velocity Gradient
-            'slab'   : Plane parallel slab
+            'lvg'    : Expanding sphere (large velocity gradient)
+            'slab'   : Plane parallel slab (shock)
         These options require valid paths to be specified in the radexgrid.cfg
         configuration file.
     filen : str
@@ -65,7 +65,7 @@ class RadexGrid(object):
         could be used for passing custom parsers or runners to the respective
         methods.
     kwargs
-        Additional keywords are passed to the `pandas.read_csv` constructor.
+        Additional keywords are passed `pandas.read_csv`.
 
 
     Attributes
@@ -82,7 +82,7 @@ class RadexGrid(object):
         >>> import radexgrid
         >>> rg = radexgrid.RadexGrid(molecule='hco+', freq=(200,400),
         ... tkin=(10,20,2), dens=(1e3,1e4,2), colliders=('H2',))
-        >>> rg
+        >>> rg.head()
         >>> rg.meta
         >>> rg.to_csv('hcop_grid.csv', index=False)
         >>> rg.to_hdf('hcop_grid.hdf', 'table', append=True)
