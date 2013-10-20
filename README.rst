@@ -1,13 +1,17 @@
 Python RADEX Wrapper
 ====================
 
-A python wrapper for the ``RADEX`` molecular radiative transfer code
-(http://strw.leidenuniv.nl/~moldata/radex.html). Model grids can be run over
-kinetic temperature, spatial density, and collision partner.  The calculated
-properties are returned in a ``pandas.DataFrame``.
+``radexgrid`` is a python wrapper for the ``RADEX`` molecular radiative
+transfer code (http://strw.leidenuniv.nl/~moldata/radex.html). Model grids can
+be run over kinetic temperature, spatial density, and collision partner.  The
+calculated properties are returned in high-performance and flexible
+``pandas.DataFrame`` objects.
 
-Installing
-----------
+``radexgrid`` benefits from code incorporated from the ``pyradex``
+(http://github.com/keflavich/pyradex) wrapper authored by Adam Ginsburg.
+
+Installation
+------------
 Installation has only been tested on Linux so far. If you find
 any bugs, please open an issue or file a pull request, and I'll
 patch the code as quickly as possible.
@@ -15,7 +19,7 @@ patch the code as quickly as possible.
 If you would like to use all of the supported ``RADEX`` geometries,
 first compile the code three times and assign the binaries unique names.
 
-.. code-block::
+.. code-block:: fortran
 
     c       parameter (method = 1)  ! uniform sphere
            parameter (method = 2)  ! expanding sphere (LVG)
@@ -47,32 +51,45 @@ Finally, install the package:
 
     $ python setup.py install
 
-Example
--------
-
-.. code-block::
-
-    In [1]: import radexgrid
-
-    In [2]: rg = radexgrid.RadexGrid(molecule='hco+', freq=(200,400), tkin=(10,20,2),
-      ....: dens=(1e3,1e4,2), colliders=('H2',))
-
-    In [3]: rg.head()
-
-    In [4]: rg.meta
-
-    In [5]: rg.to_csv('hcop_grid.csv', index=False)
-
-    In [6]: rg.to_hdf('hcop_grid.hdf', 'table', append=True)
-
 Requirements
 ------------
+``radexgrid`` relies on the following python modules, all are available in PyPI via pip:
 
 .. code-block::
 
     numpy
     pandas
     astropy
+
+Using ``radexgrid``
+-------------------
+The ``RadexGrid`` class is the primary interface to run ``RADEX`` models.
+Custom classes for running ``RADEX`` and parsing the output can be passed via
+the available methods. To use package builtins, simply run the
+``mygrid.run_model()`` method and a python ``pandas.DataFrame`` will be
+returned with attributes for the grid properties.
+
+Here is an example use-case in an interactive IPython session. A 2x2 model grid
+over kinetic temperature and spatial density for HCO+. All transitions within
+the frequency interval are returned. Multi-processing is supported through the
+``nprocs`` keyword for the number of processes to spawn.
+
+.. code-block::
+
+    In [1]: import radexgrid
+
+    In [2]: rg = radexgrid.RadexGrid(molecule='hco+', freq=(200,400), tkin=(10,20,2),
+      ....: dens=(1e3,1e4,2), colliders=('H2',), nprocs=4)
+
+    In [3]: df = rg.run_model()
+
+    In [4]: df.head()
+
+    In [5]: df.meta
+
+    In [6]: df.to_csv('hcop_grid.csv', index=False)
+
+    In [7]: df.to_hdf('hcop_grid.hdf', 'table', append=True)
 
 License
 -------

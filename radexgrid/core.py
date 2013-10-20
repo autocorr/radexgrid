@@ -78,10 +78,11 @@ class RadexGrid(object):
         >>> import radexgrid
         >>> rg = radexgrid.RadexGrid(molecule='hco+', freq=(200,400),
         ... tkin=(10,20,2), dens=(1e3,1e4,2), colliders=('H2',))
-        >>> rg.head()
-        >>> rg.meta
-        >>> rg.to_csv('hcop_grid.csv', index=False)
-        >>> rg.to_hdf('hcop_grid.hdf', 'table', append=True)
+        >>> df = rg.run_model()
+        >>> df.head()
+        >>> df.meta
+        >>> df.to_csv('hcop_grid.csv', index=False)
+        >>> df.to_hdf('hcop_grid.hdf', 'table', append=True)
     """
     header_names = ['J_up', 'J_low', 'E_up', 'freq', 'wave', 'T_ex', 'tau',
                     'T_R', 'pop_up', 'pop_low', 'flux_Kkms', 'flux_Inu',
@@ -147,6 +148,10 @@ class RadexGrid(object):
         self.meta['geometry'] = self.geometry
 
     def _get_grid_axes(self):
+        """
+        Create the temperature and density axes in spacings set by the
+        `grid_scale` attribute.
+        """
         space_map = {'linear': np.linspace,
                      'log': lambda x,y,z : np.logspace(np.log10(x), np.log10(y), z)}
         tkin_axis = space_map[self.grid_scale[0]](*self.tkin)
@@ -180,11 +185,11 @@ class RadexGrid(object):
         with open(self.filen + '.inp', 'w') as input_file:
             input_file.write(model_input)
 
-    def run_radex(self, Runner):
+    def run_radex(self, Runner=Runner):
         self.runner = Runner(self)
         self.runner.run()
 
-    def parse_output(self, Parser):
+    def parse_output(self, Parser=Parser):
         self.parser = Parser(self)
         self.clean_lines = self.parser.parse()
 
@@ -199,16 +204,13 @@ class RadexGrid(object):
 
     def run_model(self):
         self.write_input()
-        self.run_radex(Runner)
-        self.parse_output(Parser)
+        self.run_radex()
+        self.parse_output()
         self.to_dataframe()
         return self.df
 
 
 class Runner(object):
-    """
-    Run a RADEX model grid from a `RadexModel` instance.
-    """
     def __init__(self, model):
         self.model = model
 
