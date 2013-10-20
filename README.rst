@@ -27,7 +27,7 @@ first compile the code three times and assign the binaries unique names.
 
 Pull the code from GitHub:
 
-.. code-block:: shell
+.. code-block::
 
     $ git clone git://github.com/autocorr/radexgrid
     $ cd radexgrid
@@ -36,7 +36,7 @@ Edit the ``radexgrid.cfg`` configuration file in the cloned directory or a copy
 as ``~/.radexgrid.cfg`` in your home directory with names or paths to the RADEX
 binaries and the directory name where the molecular datafiles are stored.
 
-.. code-block:: config
+.. code-block::
 
     [radex-paths]
     radex_sphere = radex_sphere
@@ -47,7 +47,7 @@ binaries and the directory name where the molecular datafiles are stored.
 
 Finally, install the package:
 
-.. code-block:: shell
+.. code-block::
 
     $ python setup.py install
 
@@ -74,7 +74,7 @@ over kinetic temperature and spatial density for HCO+. All transitions within
 the frequency interval are returned. Multi-processing is supported through the
 ``nprocs`` keyword for the number of processes to spawn.
 
-.. code-block::
+.. code-block:: python
 
     In [1]: import radexgrid
 
