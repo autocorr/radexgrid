@@ -27,7 +27,7 @@ first compile the code three times and assign the binaries unique names.
 
 Pull the code from GitHub:
 
-.. code-block::
+.. code-block:: shell
 
     $ git clone git://github.com/autocorr/radexgrid
     $ cd radexgrid
@@ -36,7 +36,7 @@ Edit the ``radexgrid.cfg`` configuration file in the cloned directory or a copy
 as ``~/.radexgrid.cfg`` in your home directory with names or paths to the RADEX
 binaries and the directory name where the molecular datafiles are stored.
 
-.. code-block::
+.. code-block:: config
 
     [radex-paths]
     radex_sphere = radex_sphere
@@ -47,7 +47,7 @@ binaries and the directory name where the molecular datafiles are stored.
 
 Finally, install the package:
 
-.. code-block::
+.. code-block:: shell
 
     $ python setup.py install
 
