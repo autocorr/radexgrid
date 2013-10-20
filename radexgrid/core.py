@@ -60,10 +60,6 @@ class RadexGrid(object):
     nprocs : number, default 1
         Number of processes to use for multiprocessing. Defaults to one
         process.
-    delay_run : bool, default False
-        Should running the model grid be delayed at initialization? The delay
-        could be used for passing custom parsers or runners to the respective
-        methods.
     kwargs
         Additional keywords are passed `pandas.read_csv`.
 
@@ -99,8 +95,7 @@ class RadexGrid(object):
     def __init__(self, molecule='hco+', freq=(50., 500.), tkin=(10., 100., 100),
             dens=(1e3, 1e8, 100), grid_scale=('linear', 'log'), tbg=2.73,
             colliders=('p-H2',), column_density=1e14, linewidth=1.,
-            geometry='sphere', filen='radex_model', nprocs=1, delay_run=False,
-            **kwargs):
+            geometry='sphere', filen='radex_model', nprocs=1, **kwargs):
         # Keyword parameters
         self.molecule = molecule
         self.freq = freq
@@ -120,8 +115,6 @@ class RadexGrid(object):
         self.model_params = []
         self.__validate_params()
         self.__assign_meta_params()
-        if not delay_run:
-            self.run_model()
 
     def __validate_params(self):
         if len(self.freq) != 2:
@@ -153,12 +146,20 @@ class RadexGrid(object):
         self.meta['column_density'] = self.column_density
         self.meta['geometry'] = self.geometry
 
+    def _get_grid_axes(self):
+        space_map = {'linear': np.linspace,
+                     'log': lambda x,y,z : np.logspace(np.log10(x), np.log10(y), z)}
+        tkin_axis = space_map[self.grid_scale[0]](*self.tkin)
+        dens_axis = space_map[self.grid_scale[1]](*self.dens)
+        return tkin_axis, dens_axis
+
     def write_input(self):
         flow = 1  # whether to continue onto a new model
         model_input = []
+        tkin_axis, dens_axis = self._get_grid_axes()
         for icoll in self.colliders:
-            for itemp in np.linspace(*self.tkin):
-                for idens in np.linspace(*self.dens):
+            for itemp in tkin_axis:
+                for idens in dens_axis:
                     self.model_params.append((icoll, itemp, idens))
                     input_items = [DATA_PATH + self.molecule + '.dat',
                                    self.filen + '.rdx',
