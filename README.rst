@@ -55,7 +55,7 @@ Finally, install the package:
 
 Requirements
 ------------
-``radexgrid`` relies on the following python modules, all are available in PyPI via pip:
+``radexgrid`` requires the following python modules, all are available in PyPI via pip:
 
 .. code-block::
 
@@ -71,10 +71,10 @@ the available methods. To use package builtins, simply run the
 ``mygrid.run_model()`` method and a python ``pandas.DataFrame`` will be
 returned with attributes for the grid properties.
 
-Here is an example use-case in an interactive IPython session. A 2x2 model grid
+Here is an example use-case in an interactive IPython session for a 2x2 model grid
 over kinetic temperature and spatial density for HCO+. All transitions within
-the frequency interval are returned. Multi-processing is supported through the
-``nprocs`` keyword for the number of processes to spawn.
+the frequency interval are returned, ie J=4-3 and J=3-2. Multi-processing is 
+supported through the ``nprocs`` keyword for the number of processes to spawn.
 
 .. code-block:: python
 
