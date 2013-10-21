@@ -2,10 +2,10 @@ Python RADEX Wrapper
 ====================
 
 ``radexgrid`` is a python wrapper for the ``RADEX`` molecular radiative
-transfer code (http://strw.leidenuniv.nl/~moldata/radex.html). Model grids can
-be run over kinetic temperature, spatial density, and collision partner.  The
-calculated properties are returned in high-performance and flexible
-``pandas.DataFrame`` objects.
+transfer code (http://strw.leidenuniv.nl/~moldata/radex.html). Model grids 
+with multiprocessing support can be run over kinetic temperature, spatial 
+density, and collision partner.  The computed results are returned in 
+high-performance and flexible ``pandas.DataFrame`` objects.
 
 ``radexgrid`` benefits from code incorporated from the ``pyradex``
 (http://github.com/keflavich/pyradex) wrapper authored by Adam Ginsburg.
@@ -16,8 +16,10 @@ Installation has only been tested on Linux so far. If you find
 any bugs, please open an issue or file a pull request, and I'll
 patch the code as quickly as possible.
 
-If you would like to use all of the supported ``RADEX`` geometries,
-first compile the code three times and assign the binaries unique names.
+If you would like to use all of the supported ``RADEX`` escape probability
+methods or geometries, first comment/uncomment the appropriate method
+in the ``src/radex.inc`` (near lineno 34) file, compile ``RADEX``, and assign 
+the binaries unique names.
 
 .. code-block:: fortran
 
@@ -33,7 +35,7 @@ Pull the code from GitHub:
     $ cd radexgrid
 
 Edit the ``radexgrid.cfg`` configuration file in the cloned directory or a copy
-as ``~/.radexgrid.cfg`` in your home directory with names or paths to the RADEX
+as ``~/.radexgrid.cfg`` in your home directory with names or paths to the ``RADEX``
 binaries and the directory name where the molecular datafiles are stored.
 
 .. code-block::
@@ -83,29 +85,31 @@ the frequency interval are returned. Multi-processing is supported through the
 
     In [3]: df = rg.run_model()
 
-    In [4]: df.head()
+    In [4]: ls
+    
+    In [5]: df.head()
 
-    In [5]: df.meta
+    In [6]: df.meta
 
-    In [6]: df.to_csv('hcop_grid.csv', index=False)
+    In [7]: df.to_csv('hcop_grid.csv', index=False)
 
-    In [7]: df.to_hdf('hcop_grid.hdf', 'table', append=True)
+    In [8]: df.to_hdf('hcop_grid.hdf', 'table', append=True)
 
 License
 -------
 Copyright 2013 Brian Svoboda
 
-Pyradex is free software: you can redistribute it and/or modify it under the
+Radexgrid is free software: you can redistribute it and/or modify it under the
 terms of the GNU General Public License (v3) as published by the Free Software
 Foundation, either version 3 of the License, or (at your option) any later
 version.
 
-Pyradex is distributed in the hope that it will be useful, but WITHOUT ANY
+Radexgrid is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
-Pyradex. If not, see http://www.gnu.org/licenses/.
+Radexgrid. If not, see http://www.gnu.org/licenses/.
 
 Info
 ----
