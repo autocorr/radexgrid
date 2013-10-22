@@ -9,7 +9,7 @@ import StringIO
 import linecache
 import subprocess
 import numpy as np
-from itertools import count
+from itertools import (count, product)
 from multiprocessing import Pool
 from tempfile import NamedTemporaryFile
 from pandas import read_csv
@@ -26,6 +26,7 @@ class RadexGrid(object):
     Run RADEX over a grid of kinetic temperatures, spatial densities, and
     collision partners. The data is written to a standard RADEX out-file and
     read into a `pandas.DataFrame`.
+
 
     Parameters
     ----------
@@ -69,9 +70,11 @@ class RadexGrid(object):
     meta : dict
         Model parameters and column physical units.
 
+
     Returns
     -------
     df : pandas.DataFrame
+
 
     Examples
     --------
@@ -84,30 +87,40 @@ class RadexGrid(object):
         >>> df.to_csv('hcop_grid.csv', index=False)
         >>> df.to_hdf('hcop_grid.hdf', 'table', append=True)
     """
-    header_names = ['J_up', 'J_low', 'E_up', 'freq', 'wave', 'T_ex', 'tau',
-                    'T_R', 'pop_up', 'pop_low', 'flux_Kkms', 'flux_Inu',
-                    'Coll', 'T_K', 'n_H2']
-    header_units = [None, None, u.K, u.GHz, u.um, u.K, None, u.K, None, None,
-                    u.k * u.km / u.s, u.erg / u.cm**2 / u.s, None, u.K,
-                    u.cm**-3]
-    header_dtypes = [str, str, float, float, float, float, float, float, float,
-                     float, float, float, str, float, float]
+    header = [('J_up', None, str),
+              ('J_low', None, str),
+              ('E_up', u.K, float),
+              ('freq', u.GHz, float),
+              ('wave', u.um, float),
+              ('T_ex', u.K, float),
+              ('tau', None, float),
+              ('T_R', u.K, float),
+              ('pop_up', None, float),
+              ('pop_low', None, float),
+              ('flux_Kkms', u.K * u.km / u.s, float),
+              ('flux_Inu', u.erg / u.cm**2 / u.s, float),
+              ('T_K', u.K, float),
+              ('n_H2', u.cm**-3, float),
+              ('T_bg', u.K, float),
+              ('N_mol', u.cm**-2, float),
+              ('dv', u.km / u.s, float),
+              ('Coll', None, str)]
+    header_names, header_units, header_dtypes = zip(*header)
 
-    def __init__(self, molecule='hco+', freq=(50., 500.), tkin=(10., 100., 100),
-            dens=(1e3, 1e8, 100), grid_scale=('linear', 'log'), tbg=2.73,
-            colliders=('p-H2',), column_density=1e14, linewidth=1.,
-            geometry='sphere', filen='radex_model', nprocs=1, **kwargs):
+    def __init__(self, molecule='hco+', freq=(50., 500.), tkin=(10., 100., 2,
+            'lin'), dens=(1e3, 1e8, 2, 'log'), tbg=(2.73, 3.5, 2, 'lin'),
+            column_density=(1e13, 1e14, 2, 'log'), linewidth=(1., 3, 3, 'lin'),
+            colliders=('p-H2',), geometry='sphere', filen='radex_model',
+            nprocs=1, **kwargs):
         # Keyword parameters
         self.molecule = molecule
         self.freq = freq
-        self.tbg = tbg
         self.tkin = tkin
         self.dens = dens
-        self.grid_scale = grid_scale
         self.tbg = tbg
-        self.colliders = colliders
         self.column_density = column_density
         self.linewidth = linewidth
+        self.colliders = colliders
         self.geometry = geometry
         self.filen = filen
         self.kwargs = kwargs
@@ -118,18 +131,23 @@ class RadexGrid(object):
         self.__assign_meta_params()
 
     def __validate_params(self):
+        # Low and high frequencies
         if len(self.freq) != 2:
             raise ValueError('Invalid frequency range: {0}.'.format(self.freq))
-        if len(self.tkin) != 3:
-            raise ValueError('Invalid kinetic temperature range: '
-                             '{0}.'.format(self.tkin))
+        # Check if grid parameter lists are well-formed
+        tuple_or_singles = [self.tkin, self.dens, self.tbg,
+                            self.column_density, self.linewidth]
+        for param in tuple_or_singles:
+            if isinstance(param, (tuple, list)):
+                if len(param) != 4:
+                    raise ValueError('Invalid parameter list: '
+                                     '{0}.'.format(param))
+            if isinstance(param, (int, float, long)):
+                param = (param, param, 1, 'lin')
         if self.geometry not in ('sphere', 'lvg', 'slab'):
             raise ValueError('Invalid geometry: {0}.'.format(self.geometry))
         if not isinstance(self.colliders, (tuple, list)):
             self.colliders = tuple(self.colliders)
-        for scale in self.grid_scale:
-            if scale not in ['linear', 'log']:
-                raise ValueError('Invalid scale: {0}.'.format(scale))
 
     def __assign_meta_params(self):
         """
@@ -140,11 +158,12 @@ class RadexGrid(object):
         self.meta['units'] = zip(self.header_names, self.header_units)
         self.meta['molecule'] = self.molecule
         self.meta['freq'] = self.freq
-        self.meta['tkin_range'] = self.tkin + tuple(self.grid_scale[0])
-        self.meta['dens_range'] = self.dens + tuple(self.grid_scale[1])
+        self.meta['tkin'] = self.tkin
+        self.meta['dens'] = self.dens
         self.meta['tbg'] = self.tbg
-        self.meta['colliders'] = self.colliders
         self.meta['column_density'] = self.column_density
+        self.meta['linewidth'] = self.linewidth
+        self.meta['colliders'] = self.colliders
         self.meta['geometry'] = self.geometry
 
     def _get_grid_axes(self):
@@ -154,30 +173,33 @@ class RadexGrid(object):
         """
         space_map = {'linear': np.linspace,
                      'log': lambda x,y,z : np.logspace(np.log10(x), np.log10(y), z)}
-        tkin_axis = space_map[self.grid_scale[0]](*self.tkin)
-        dens_axis = space_map[self.grid_scale[1]](*self.dens)
-        return tkin_axis, dens_axis
+        grid_params = [self.tkin, self.dens, self.tbg, self.column_density,
+                       self.linewidth]
+        # Note that param has (low, high, steps, scale)
+        axes = [space_map[param[3]](*param[:3]) for param in grid_params]
+        axes.extend(self.colliders)
+        return axes
 
     def write_input(self):
         flow = 1  # whether to continue onto a new model
         model_input = []
-        tkin_axis, dens_axis = self._get_grid_axes()
-        for icoll in self.colliders:
-            for itemp in tkin_axis:
-                for idens in dens_axis:
-                    self.model_params.append((icoll, itemp, idens))
-                    input_items = [DATA_PATH + self.molecule + '.dat',
-                                   self.filen + '.rdx',
-                                   '{0} {1}'.format(*self.freq),
-                                   itemp,
-                                   self.ncoll,
-                                   icoll,
-                                   idens,
-                                   self.tbg,
-                                   self.column_density,
-                                   self.linewidth,
-                                   flow]
-                    model_input.append('\n'.join([str(s) for s in input_items]))
+        axes = self._get_grid_axes()
+        # Cartesian product over grid axes
+        for grid_point in product(axes):
+            self.model_params.append(grid_point)
+            tkin, dens, tbg, column_density, linewidth, collider = grid_point
+            input_items = [DATA_PATH + self.molecule + '.dat',
+                           self.filen + '.rdx',
+                           '{0} {1}'.format(*self.freq),
+                           tkin,
+                           self.ncoll,
+                           collder,
+                           dens,
+                           tbg,
+                           column_density,
+                           linewidth,
+                           flow]
+            model_input.append('\n'.join([str(s) for s in input_items]))
         # Replace last '1' with '0' to signal end of model iterations
         model_input[-1] = re.sub(r'1$', r'0', model_input[-1])
         model_input = '\n'.join(model_input)
@@ -218,11 +240,11 @@ class Runner(object):
         with open(self.model.filen + '.log', 'w') as f:
             f.write(self.error_log)
 
-    def run(self):
+    def run_single(self, inpfile):
         logfile = NamedTemporaryFile(mode='w', delete=True)
         cmd = '{radex} < {inpfile} > {logfile}'.format(
             radex=RADEX_PATHS[self.model.geometry],
-            inpfile=self.model.filen + '.inp',
+            inpfile=inpfile,
             logfile=logfile.name)
         result = subprocess.call(cmd, shell=True)
         if result != 0:
@@ -231,6 +253,11 @@ class Runner(object):
                 self.error_log = f.read()
             self._write_error_log()
         logfile.close()
+
+    def run(self):
+        full_input = self.model.filen + '.inp'
+        nprocs = self.model.nprocs
+        self.run_single(full_input)
 
 
 class Parser(object):
