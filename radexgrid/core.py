@@ -123,6 +123,7 @@ class RadexGrid(object):
         self.colliders = colliders
         self.geometry = geometry
         self.filen = filen
+        self.nprocs = nprocs
         self.kwargs = kwargs
         self.ncoll = len(colliders)
         # Construct and run
@@ -134,20 +135,28 @@ class RadexGrid(object):
         # Low and high frequencies
         if len(self.freq) != 2:
             raise ValueError('Invalid frequency range: {0}.'.format(self.freq))
-        # Check if grid parameter lists are well-formed
-        tuple_or_singles = [self.tkin, self.dens, self.tbg,
-                            self.column_density, self.linewidth]
-        for param in tuple_or_singles:
-            if isinstance(param, (tuple, list)):
-                if len(param) != 4:
-                    raise ValueError('Invalid parameter list: '
-                                     '{0}.'.format(param))
-            if isinstance(param, (int, float, long)):
-                param = (param, param, 1, 'lin')
+        # Make sure grid parameter lists are well-formed
+        self.tkin = self.__format_param_list(self.tkin)
+        self.dens = self.__format_param_list(self.dens)
+        self.tbg = self.__format_param_list(self.tbg)
+        self.column_density = self.__format_param_list(self.column_density)
+        self.linewidth = self.__format_param_list(self.linewidth)
         if self.geometry not in ('sphere', 'lvg', 'slab'):
             raise ValueError('Invalid geometry: {0}.'.format(self.geometry))
         if not isinstance(self.colliders, (tuple, list)):
             self.colliders = tuple(self.colliders)
+
+    def __format_param_list(self, param):
+        if hasattr(param, '__iter__'):
+            if len(param) == 4:
+                return param
+            else:
+                raise ValueError('Invalid parameter list: '
+                                 '{0}.'.format(param))
+        elif isinstance(param, (int, float, long)):
+            return (param, param, 1, 'lin')
+        else:
+            raise Exception('Could not parse parameters: {0}.'.format(param))
 
     def __assign_meta_params(self):
         """
@@ -171,13 +180,13 @@ class RadexGrid(object):
         Create the temperature and density axes in spacings set by the
         `grid_scale` attribute.
         """
-        space_map = {'linear': np.linspace,
+        space_map = {'lin': np.linspace,
                      'log': lambda x,y,z : np.logspace(np.log10(x), np.log10(y), z)}
         grid_params = [self.tkin, self.dens, self.tbg, self.column_density,
                        self.linewidth]
         # Note that param has (low, high, steps, scale)
         axes = [space_map[param[3]](*param[:3]) for param in grid_params]
-        axes.extend(self.colliders)
+        axes.append(self.colliders)
         return axes
 
     def write_input(self):
@@ -185,7 +194,7 @@ class RadexGrid(object):
         model_input = []
         axes = self._get_grid_axes()
         # Cartesian product over grid axes
-        for grid_point in product(axes):
+        for grid_point in product(*axes):
             self.model_params.append(grid_point)
             tkin, dens, tbg, column_density, linewidth, collider = grid_point
             input_items = [DATA_PATH + self.molecule + '.dat',
@@ -193,7 +202,7 @@ class RadexGrid(object):
                            '{0} {1}'.format(*self.freq),
                            tkin,
                            self.ncoll,
-                           collder,
+                           collider,
                            dens,
                            tbg,
                            column_density,
