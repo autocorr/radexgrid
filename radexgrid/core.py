@@ -119,7 +119,7 @@ class RadexGrid(object):
               ('flux_Kkms', u.K * u.km / u.s, float),
               ('flux_Inu', u.erg / u.cm**2 / u.s, float),
               ('T_K', u.K, float),
-              ('n_H2', u.cm**-3, float),
+              ('n_coll', u.cm**-3, float),
               ('T_bg', u.K, float),
               ('N_mol', u.cm**-2, float),
               ('dv', u.km / u.s, float),
@@ -128,10 +128,9 @@ class RadexGrid(object):
     bandwidth = 0.01  # in GHz
 
     def __init__(self, molecule='hco+', freq=(50., 500.), tkin=(10., 100., 2,
-            'lin'), dens=(1e3, 1e8, 2, 'log'), tbg=(2.73, 3.5, 2, 'lin'),
-            column_density=(1e13, 1e14, 2, 'log'), linewidth=(1., 3, 3, 'lin'),
-            colliders=('p-H2',), geometry='sphere', filen='radex_model',
-            nprocs=1, **kwargs):
+            'lin'), dens=(1e3, 1e8, 2, 'log'), tbg=2.73, column_density=(1e13,
+            1e14, 2, 'log'), linewidth=2, colliders=('p-H2',),
+            geometry='sphere', filen='radex_model', nprocs=1, **kwargs):
         # Keyword parameters
         self.molecule = molecule
         self.freq = freq
@@ -167,6 +166,7 @@ class RadexGrid(object):
         self.linewidth = self.__format_param_list(self.linewidth)
         if not hasattr(self.colliders, '__iter__'):
             self.colliders = (self.colliders,)
+            self.ncoll = len(self.colliders)
         if self.geometry not in ('sphere', 'lvg', 'slab'):
             raise ValueError('Invalid geometry: {0}.'.format(self.geometry))
 
@@ -352,15 +352,14 @@ class Parser(object):
         start_trans, ntrans = self._number_of_trans()
         modulo_lines = (start_trans - 1) + ntrans  # header lines + data lines
         raw_data = ''
-        with open(filen + '.dat', 'w') as out_file:
-            for current_run, params in enumerate(self.model.model_params):
-                for jj in range(ntrans):
-                    line_num = modulo_lines * current_run + start_trans + jj
-                    # line in file + params + \n
-                    raw_data += linecache.getline(filen + '.rdx',
-                                                  line_num).strip('\n') \
-                                    + ' ' + ' '.join([str(s) for s in params]) \
-                                    + '\n'
+        for current_run, params in enumerate(self.model.model_params):
+            for jj in range(ntrans):
+                line_num = modulo_lines * current_run + start_trans + jj
+                # line in file + params + \n
+                raw_data += linecache.getline(filen + '.rdx',
+                                              line_num).strip('\n') \
+                                + ' ' + ' '.join([str(s) for s in params]) \
+                                + '\n'
         # Remove final \n
         self.raw_data = raw_data[:-1]
         self.clean_data = self._clean_lines(self.raw_data)
