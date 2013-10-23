@@ -2,10 +2,11 @@ Python RADEX Wrapper
 ====================
 
 ``radexgrid`` is a python wrapper for the ``RADEX`` molecular radiative
-transfer code (http://strw.leidenuniv.nl/~moldata/radex.html). Model grids 
-with multiprocessing support can be run over kinetic temperature, spatial 
-density, and collision partner.  The computed results are returned in 
-high-performance and flexible ``pandas.DataFrame`` objects.
+transfer code (http://strw.leidenuniv.nl/~moldata/radex.html). Model grids
+with multiprocessing support can be run over kinetic temperature, spatial
+density, column density, background temperature, linewidth, and collision
+partner.  The computed results are returned in high-performance and flexible
+``pandas.DataFrame`` objects.
 
 ``radexgrid`` benefits from code incorporated from the ``pyradex``
 (http://github.com/keflavich/pyradex) wrapper authored by Adam Ginsburg.
@@ -18,8 +19,8 @@ patch the code as quickly as possible.
 
 If you would like to use all of the supported ``RADEX`` escape probability
 methods or geometries, first comment/uncomment the appropriate method
-in the ``src/radex.inc`` (near lineno 34) file, compile ``RADEX``, and assign 
-the binaries unique names.
+in the ``src/radex.inc`` (near lineno 34) fortran source file, compile
+``RADEX``, and assign the binaries unique names.
 
 .. code-block:: fortran
 
@@ -27,7 +28,7 @@ the binaries unique names.
            parameter (method = 2)  ! expanding sphere (LVG)
     c       parameter (method = 3)  ! plane parralel slab (shock)
 
-Pull the code from GitHub:
+Download the code from GitHub:
 
 .. code-block::
 
@@ -71,22 +72,26 @@ the available methods. To use package builtins, simply run the
 ``mygrid.run_model()`` method and a python ``pandas.DataFrame`` will be
 returned with attributes for the grid properties.
 
-Here is an example use-case in an interactive IPython session for a 2x2 model grid
-over kinetic temperature and spatial density for HCO+. All transitions within
-the frequency interval are returned, ie J=4-3 and J=3-2. Multi-processing is 
-supported through the ``nprocs`` keyword for the number of processes to spawn.
+Here is an example use-case in an interactive IPython session for a 2x2x10 model grid
+over kinetic temperature, spatial density, and column density for HCO+. All
+transitions within the frequency interval are returned, ie J=4-3 and J=3-2.
+Multi-processing is supported through the ``nprocs`` keyword for the number of
+processes to spawn.  Please see the documentation for description of the
+specific calling calling sequence.
 
 .. code-block:: python
 
     In [1]: import radexgrid
 
-    In [2]: rg = radexgrid.RadexGrid(molecule='hco+', freq=(200,400), tkin=(10,20,2),
-      ....: dens=(1e3,1e4,2), colliders=('H2',), nprocs=4)
+    In [2]: rg = radexgrid.RadexGrid(molecule='hco+', freq=(200,400),
+      ....: tkin=(10,20,2,'lin'), dens=(1e3,1e4,2,'lin'),
+      ....: column_density=(1e12,1e14,10,'log'), colliders='H2', nprocs=4)
 
     In [3]: df = rg.run_model()
 
     In [4]: ls
-    
+    radex_model.log  radex_model.inp  radex_model.rdx
+
     In [5]: df.head()
 
     In [6]: df.meta

@@ -30,25 +30,44 @@ class RadexGrid(object):
 
     Parameters
     ----------
-    molecule : str
-        Filename of molecule in RADEX data directory
-    freq : tuple, (nu_lower, nu_upper)
-        Frequency interval in GHz to return calculated values over.
-    tkin : tuple, (tkin_lower, tkin_upper, tkin_steps)
+    Model grid parameters can be passed as a single numerical value or a four
+    element list-like type to describe the range of values.
+        - single value: param=10
+        - range: param=(lower, upper, num_steps, scaling)
+    where scaling can be 'lin' for linear range or 'log' for logarithmic
+    range.
+
+    tkin : number or list-like
         Kinetic temperature range in Kelvin to calculate grid over.
-    dens : tuple, (dens_lower, dens_upper, dens_steps)
+    dens : number or list-like
         Spatial density of the collision partner in (cm^-3) to calculate grid
         over.
-    grid_scale : tuple, (tkin_scale, dens_scale)
-        Scale for parameter grid. Valid options include: 'linear' and 'log'
-    tbg : number
+    tbg : number or list-like
         Background temperature in Kelvin.
-    colliders : tuple
-        Collision partner name strings.
-    column_density : number
-        Column density in (cm^-2)
-    line_width : number
+    line_width : number or list-like
         Linewidth in km/s
+    column_density : number or list-like
+        Column density in (cm^-2)
+
+    Other multiple value parameters:
+    These values can be passed as either single values or a list-like type, but
+    do not share the same format as the above model grid parameters.
+    freq : number or tuple, (nu_lower, nu_upper)
+        Frequency interval in GHz to return calculated values over. If a single
+        frequency is passed, then a bandwidth of 10 MHz is used centered on the
+        given frequency.
+            - single value: freq=267.55 -> freq=(267.54, 267.56)
+            - range: freq=(200, 400)
+    colliders : str or list-like, default ('p-H2',)
+        Collision partner name strings. Note that this is only important for
+        molecules such as H2O that have collisional rates for multiple collision
+        partners.
+            - single value: colliders='H2'
+            - range: colliders=('p-H2', 'o-H2')
+
+    Single value parameters:
+    molecule : str
+        Filename of molecule in RADEX data directory
     geometry : str
         Geometry of emitting region. Valid options include:
             'sphere' : Uniform sphere
@@ -106,6 +125,7 @@ class RadexGrid(object):
               ('dv', u.km / u.s, float),
               ('Coll', None, str)]
     header_names, header_units, header_dtypes = zip(*header)
+    bandwidth = 0.01  # in GHz
 
     def __init__(self, molecule='hco+', freq=(50., 500.), tkin=(10., 100., 2,
             'lin'), dens=(1e3, 1e8, 2, 'log'), tbg=(2.73, 3.5, 2, 'lin'),
@@ -133,18 +153,22 @@ class RadexGrid(object):
 
     def __validate_params(self):
         # Low and high frequencies
-        if len(self.freq) != 2:
-            raise ValueError('Invalid frequency range: {0}.'.format(self.freq))
+        if hasattr(self.freq, '__iter__'):
+            if len(self.freq) != 2:
+                raise ValueError('Invalid frequency range: {0}.'.format(self.freq))
+        elif isinstance(self.freq, (int, float, long)):
+            self.freq = (self.freq - self.bandwidth / 2.,
+                         self.freq + self.bandwidth / 2.)
         # Make sure grid parameter lists are well-formed
         self.tkin = self.__format_param_list(self.tkin)
         self.dens = self.__format_param_list(self.dens)
         self.tbg = self.__format_param_list(self.tbg)
         self.column_density = self.__format_param_list(self.column_density)
         self.linewidth = self.__format_param_list(self.linewidth)
+        if not hasattr(self.colliders, '__iter__'):
+            self.colliders = (self.colliders,)
         if self.geometry not in ('sphere', 'lvg', 'slab'):
             raise ValueError('Invalid geometry: {0}.'.format(self.geometry))
-        if not isinstance(self.colliders, (tuple, list)):
-            self.colliders = tuple(self.colliders)
 
     def __format_param_list(self, param):
         if hasattr(param, '__iter__'):
@@ -216,11 +240,11 @@ class RadexGrid(object):
         with open(self.filen + '.inp', 'w') as input_file:
             input_file.write(model_input)
 
-    def run_radex(self, Runner=Runner):
+    def run_radex(self, Runner):
         self.runner = Runner(self)
         self.runner.run()
 
-    def parse_output(self, Parser=Parser):
+    def parse_output(self, Parser):
         self.parser = Parser(self)
         self.clean_lines = self.parser.parse()
 
@@ -235,8 +259,8 @@ class RadexGrid(object):
 
     def run_model(self):
         self.write_input()
-        self.run_radex()
-        self.parse_output()
+        self.run_radex(Runner=Runner)
+        self.parse_output(Parser=Parser)
         self.to_dataframe()
         return self.df
 

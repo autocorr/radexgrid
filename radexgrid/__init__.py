@@ -24,6 +24,7 @@ RADEX_PATHS = {'sphere': config.get('radex-paths', 'radex_sphere'),
 DATA_PATH = config.get('radex-paths', 'data_path')
 
 
+# Import core after to avoid circular dependency imports
 __version__ = '0.1'
 from .core import *
 
