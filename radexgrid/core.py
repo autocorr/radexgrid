@@ -9,7 +9,7 @@ import StringIO
 import linecache
 import subprocess
 import numpy as np
-from itertools import (count, product)
+from itertools import (count, product, repeat, izip)
 from multiprocessing import Pool
 from tempfile import NamedTemporaryFile
 from pandas import read_csv
@@ -129,7 +129,7 @@ class RadexGrid(object):
 
     def __init__(self, molecule='hco+', freq=(50., 500.), tkin=(10., 100., 2,
             'lin'), dens=(1e3, 1e8, 2, 'log'), tbg=2.73, column_density=(1e13,
-            1e14, 2, 'log'), linewidth=2, colliders=('p-H2',),
+            1e14, 2, 'log'), linewidth=1, colliders=('p-H2',),
             geometry='sphere', filen='radex_model', nprocs=1, **kwargs):
         # Keyword parameters
         self.molecule = molecule
@@ -266,6 +266,8 @@ class RadexGrid(object):
 
 
 class Runner(object):
+    modulo_lines = 11
+
     def __init__(self, model):
         self.model = model
 
@@ -273,11 +275,11 @@ class Runner(object):
         with open(self.model.filen + '.log', 'w') as f:
             f.write(self.error_log)
 
-    def run_single(self, inpfile):
+    def run_single(self, input_file):
         logfile = NamedTemporaryFile(mode='w', delete=True)
-        cmd = '{radex} < {inpfile} > {logfile}'.format(
+        cmd = '{radex} < {input_file} > {logfile}'.format(
             radex=RADEX_PATHS[self.model.geometry],
-            inpfile=inpfile,
+            input_file=input_file,
             logfile=logfile.name)
         result = subprocess.call(cmd, shell=True)
         if result != 0:
@@ -288,9 +290,76 @@ class Runner(object):
         logfile.close()
 
     def run(self):
-        full_input = self.model.filen + '.inp'
-        nprocs = self.model.nprocs
-        self.run_single(full_input)
+        self.run_single(self.model.filen + '.inp')
+
+
+class Chunker(Runner):
+    def __init__(self, model):
+        super(Chunker, self).__init__(model)
+        self.full_input = model.filen + '.inp'
+        self.nprocs = model.nprocs
+        self.num_models = len(self.model.model_params)
+
+    def _line_to_chunk(self, line_num):
+        max_chunk_index = self.nprocs - 1
+        group_size = self.num_models // self.nprocs
+        chunk_num = (line_num // self.modulo_lines) // group_size
+        if chunk_num > max_chunk_index:
+            chunk_num = max_chunk_index
+        return chunk_num
+
+    def _chunk(self):
+        chunk_files = [NamedTemporaryFile(mode='w', delete=True)
+                       for _ in range(self.nprocs)]
+        self.max_chunk_index = len(chunk_files)
+        with open(self.full_input) as f:
+            for ii, line in enumerate(f.readlines()):
+                chunk_num = self._line_to_chunk(ii)
+                line = line.replace(self.model.filen + '.rdx',
+                                    chunk_files[chunk_num].name + '.rdx')
+                chunk_files[chunk_num].write(line)
+        for chunk in chunk_files:
+            chunk.flush()
+        self.chunk_files = chunk_files
+        self.chunk_names = [c.name for c in chunk_files]
+
+    def _run_chunks(self):
+        for name in self.chunk_names:
+            self.run_single(name)
+        #pool = Pool(processes=self.nprocs)
+        #pool.map(_chunk_wrapper, izip(repeat(self), self.chunk_names))
+        #pool.close()
+        #pool.join()
+
+    def _merge(self):
+        with open(self.model.filen + '.rdx', 'w') as out_file:
+            for name in self.chunk_names:
+                with open(name + '.rdx') as out_chunk:
+                    out_file.write(out_chunk.read())
+
+    def _close(self):
+        for chunk in self.chunk_files:
+            # Delete chunked input files
+            try:
+                os.remove(chunk.name + '.rdx')
+            except:
+                pass
+            # Temporary files are deleted on close
+            chunk.close()
+
+    def run(self):
+        self._chunk()
+        self._run_chunks()
+        self._merge()
+        self._close()
+
+
+def _chunk_wrapper(args):
+    # Function must be in top-level to be pickle-able for pool
+    # "args" hack because pool.starmap unavailable in py2
+    cls, filen = args
+    cls._run_single(filen)
+    return cls
 
 
 class Parser(object):
