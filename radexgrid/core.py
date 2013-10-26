@@ -294,6 +294,10 @@ class Runner(object):
 
 
 class Chunker(Runner):
+    """
+    Multiprocessing runner to convert the radex input file into temporary
+    chunks, run RADEX, and merge the output back into a single RADEX out-file.
+    """
     def __init__(self, model):
         super(Chunker, self).__init__(model)
         self.full_input = model.filen + '.inp'
@@ -301,12 +305,21 @@ class Chunker(Runner):
         self.num_models = len(self.model.model_params)
 
     def _line_to_chunk(self, line_num):
+        """
+        Calculate the current chunk number for a line in the radex input file.
+        """
         max_chunk_index = self.nprocs - 1
         group_size = self.num_models // self.nprocs
         chunk_num = (line_num // self.modulo_lines) // group_size
         if chunk_num > max_chunk_index:
             chunk_num = max_chunk_index
         return chunk_num
+
+    def _end_of_chunk(self, line_num):
+        new_chunk = self._line_to_chunk(line_num + 1) - self._line_to_chunk(line_num)
+        if new_chunk not in [0, 1]:
+            raise Exception('Unexpected error occurred: {0}.'.format(new_chunk))
+        return new_chunk
 
     def _chunk(self):
         chunk_files = [NamedTemporaryFile(mode='w', delete=True)
@@ -315,6 +328,10 @@ class Chunker(Runner):
         with open(self.full_input) as f:
             for ii, line in enumerate(f.readlines()):
                 chunk_num = self._line_to_chunk(ii)
+                # Replace trailing continue token to stop
+                if self._end_of_chunk(ii):
+                    line = '0\n'
+                # Replace radex output file name
                 line = line.replace(self.model.filen + '.rdx',
                                     chunk_files[chunk_num].name + '.rdx')
                 chunk_files[chunk_num].write(line)
@@ -339,11 +356,7 @@ class Chunker(Runner):
 
     def _close(self):
         for chunk in self.chunk_files:
-            # Delete chunked input files
-            try:
-                os.remove(chunk.name + '.rdx')
-            except:
-                pass
+            os.remove(chunk.name + '.rdx')
             # Temporary files are deleted on close
             chunk.close()
 
