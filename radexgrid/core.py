@@ -5,11 +5,11 @@ from __future__ import division
 import os
 import re
 import time
-import StringIO
 import linecache
 import subprocess
 import numpy as np
-from itertools import (count, product, repeat, izip)
+from StringIO import StringIO
+from itertools import (count, product, repeat)
 from multiprocessing import Pool
 from tempfile import NamedTemporaryFile
 from pandas import read_csv
@@ -250,10 +250,10 @@ class RadexGrid(object):
 
     def to_dataframe(self):
         dtypes = {n: d for n, d in zip(self.header_names, self.header_dtypes)}
-        df = read_csv(StringIO.StringIO(self.clean_lines),
-                           names=self.header_names,
-                           dtype=dtypes,
-                           **self.kwargs)
+        df = read_csv(StringIO(self.clean_lines),
+                      names=self.header_names,
+                      dtype=dtypes,
+                      **self.kwargs)
         df.meta = self.meta
         self.df = df
 
@@ -266,6 +266,19 @@ class RadexGrid(object):
 
 
 class Runner(object):
+    """
+    Runner base-class to call the RADEX executable for the grid input-file. If
+    called will run RADEX without multiprocessing support.
+
+    Parameters
+    ----------
+    model : radexgrid.RadexGrid
+
+    Attributes
+    ----------
+    modulo_lines : number, default 11
+        Number of lines per model in the input file
+    """
     modulo_lines = 11
 
     def __init__(self, model):
@@ -295,8 +308,9 @@ class Runner(object):
 
 class Chunker(Runner):
     """
-    Multiprocessing runner to convert the radex input file into temporary
-    chunks, run RADEX, and merge the output back into a single RADEX out-file.
+    Multiprocessing Runner sub-class to convert the radex input file into
+    temporary chunks, run RADEX, and merge the output back into a single RADEX
+    out-file.
     """
     def __init__(self, model):
         super(Chunker, self).__init__(model)
@@ -344,7 +358,7 @@ class Chunker(Runner):
         for name in self.chunk_names:
             self.run_single(name)
         #pool = Pool(processes=self.nprocs)
-        #pool.map(_chunk_wrapper, izip(repeat(self), self.chunk_names))
+        #results = pool.imap(_chunk_wrapper, zip(repeat(self), self.chunk_names))
         #pool.close()
         #pool.join()
 
@@ -370,9 +384,9 @@ class Chunker(Runner):
 def _chunk_wrapper(args):
     # Function must be in top-level to be pickle-able for pool
     # "args" hack because pool.starmap unavailable in py2
-    cls, filen = args
-    cls._run_single(filen)
-    return cls
+    obj, filen = args
+    obj.run_single(filen)
+    return obj
 
 
 class Parser(object):
