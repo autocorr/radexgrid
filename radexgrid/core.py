@@ -145,7 +145,7 @@ class RadexGrid(object):
         self.nprocs = nprocs
         self.kwargs = kwargs
         self.ncoll = len(colliders)
-        # Construct and run
+        # Validate
         self.model_params = []
         self.__validate_params()
         self.__assign_meta_params()
@@ -266,6 +266,18 @@ class RadexGrid(object):
 
 
 def run_radex(input_file, geometry):
+    """
+    Call the RADEX command-line on an input-file. RADEX will write to the
+    output-file specified in the input-file.
+
+    Parameters
+    ----------
+    input_file : str
+        The name (if in the current directory) or path of the file for input
+        parameters passed to RADEX
+    geometry : str
+        Escape geometry parameter to select appropriate RADEX binary
+    """
     logfile = NamedTemporaryFile(mode='w', delete=True)
     cmd = '{radex} < {input_file} > {logfile}'.format(
         radex=RADEX_PATHS[geometry],
