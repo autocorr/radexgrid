@@ -90,15 +90,82 @@ the specific calling calling sequence.
     In [3]: df = rg.run_model()
 
     In [4]: ls
-    radex_model.log  radex_model.inp  radex_model.rdx
+    radex.log  radex_model.inp  radex_model.rdx
 
-    In [5]: df.head()
+    In [5]: df
+    Out [5]:
+    <class 'pandas.core.frame.DataFrame'>
+    Int64Index: 2000 entries, 0 to 1999
+    Data columns (total 18 columns):
+    J_up         2000  non-null values
+    J_low        2000  non-null values
+    E_up         2000  non-null values
+    freq         2000  non-null values
+    wave         2000  non-null values
+    T_ex         2000  non-null values
+    tau          2000  non-null values
+    T_R          2000  non-null values
+    pop_up       2000  non-null values
+    pop_low      2000  non-null values
+    flux_Kkms    2000  non-null values
+    flux_Inu     2000  non-null values
+    T_K          2000  non-null values
+    n_coll       2000  non-null values
+    T_bg         2000  non-null values
+    N_mol        2000  non-null values
+    dv           2000  non-null values
+    Coll         2000  non-null values
+    dtypes: float64(15), object(3)
 
-    In [6]: df.meta
+    In [6]: df.head()
+      J_up J_low  E_up      freq       wave   T_ex       tau       T_R    pop_up  \
+    0    3     2  25.7  267.5573  1120.4795  2.809  0.015110  0.000250  0.000407
+    1    4     3  42.8  356.7338   840.3814  3.462  0.000209  0.000019  0.000004
+    2    3     2  25.7  267.5573  1120.4795  2.809  0.025280  0.000417  0.000408
+    3    4     3  42.8  356.7338   840.3814  3.461  0.000349  0.000031  0.000004
+    4    3     2  25.7  267.5573  1120.4795  2.809  0.042340  0.000695  0.000410
 
-    In [7]: df.to_csv('hcop_grid.csv', index=False)
+        pop_low  flux_Kkms      flux_Inu  T_K  n_coll  T_bg         N_mol  dv Coll
+    0  0.028110   0.000533  1.315000e-10   10    1000  2.73  1.000000e+12   2   H2
+    1  0.000407   0.000040  2.347000e-11   10    1000  2.73  1.000000e+12   2   H2
+    2  0.028180   0.000889  2.192000e-10   10    1000  2.73  1.668101e+12   2   H2
+    3  0.000408   0.000067  3.917000e-11   10    1000  2.73  1.668101e+12   2   H2
+    4  0.028300   0.001480  3.650000e-10   10    1000  2.73  2.782559e+12   2   H2
 
-    In [8]: df.to_hdf('hcop_grid.hdf', 'table', append=True)
+
+    In [7]: df.meta
+    Out [7]:
+    {'colliders': ('H2',),
+    'column_density': (1000000000000.0, 100000000000000.0, 10, 'log'),
+    'dens': (1000.0, 10000.0, 10, 'lin'),
+    'freq': (200, 400),
+    'geometry': 'sphere',
+    'linewidth': (2, 2, 1, 'lin'),
+    'molecule': 'hco+',
+    'tbg': (2.73, 2.73, 1, 'lin'),
+    'tkin': (10, 20, 10, 'lin'),
+    'units': [('J_up', None),
+              ('J_low', None),
+              ('E_up', Unit("K")),
+              ('freq', Unit("GHz")),
+              ('wave', Unit("um")),
+              ('T_ex', Unit("K")),
+              ('tau', None),
+              ('T_R', Unit("K")),
+              ('pop_up', None),
+              ('pop_low', None),
+              ('flux_Kkms', Unit("K km / s")),
+              ('flux_Inu', Unit("erg / (cm2 s)")),
+              ('T_K', Unit("K")),
+              ('n_coll', Unit("1 / cm3")),
+              ('T_bg', Unit("K")),
+              ('N_mol', Unit("1 / cm2")),
+              ('dv', Unit("km / s")),
+              ('Coll', None)]}
+
+    In [8]: df.to_csv('hcop_grid.csv', index=False)
+
+    In [9]: df.to_hdf('hcop_grid.hdf', 'table', append=True)
 
 License
 -------
