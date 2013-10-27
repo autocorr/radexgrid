@@ -118,6 +118,7 @@ the specific calling calling sequence.
     dtypes: float64(15), object(3)
 
     In [6]: df.head()
+    Out [6]:
       J_up J_low  E_up      freq       wave   T_ex       tau       T_R    pop_up  \
     0    3     2  25.7  267.5573  1120.4795  2.809  0.015110  0.000250  0.000407
     1    4     3  42.8  356.7338   840.3814  3.462  0.000209  0.000019  0.000004
