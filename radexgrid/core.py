@@ -259,16 +259,55 @@ class RadexGrid(object):
 
     def run_model(self):
         self.write_input()
-        self.run_radex(Runner=Runner)
+        self.run_radex(Runner=Chunker)
         self.parse_output(Parser=Parser)
         self.to_dataframe()
         return self.df
+
+
+def run_radex(input_file, geometry):
+    logfile = NamedTemporaryFile(mode='w', delete=True)
+    cmd = '{radex} < {input_file} > {logfile}'.format(
+        radex=RADEX_PATHS[geometry],
+        input_file=input_file,
+        logfile=logfile.name)
+    result = subprocess.call(cmd, shell=True)
+    if result != 0:
+        print 'RADEX returned error code {0}.'.format(result)
+        with open(logfile.name, 'r') as f:
+            self.error_log = f.read()
+        with open(os.path.basename(input_file) + '.log', 'w') as f:
+            f.write(self.error_log)
+    logfile.close()
+
+
+def _runner_wrapper(args):
+    # Hack for Pool because pool.starmap unavaialable in py2
+    return run_radex(*args)
 
 
 class Runner(object):
     """
     Runner base-class to call the RADEX executable for the grid input-file. If
     called will run RADEX without multiprocessing support.
+    """
+    def __init__(self, model, input_file=None):
+        self.model = model
+        self.geometry = model.geometry
+        if input_file is None:
+            self.input_file = model.filen + '.inp'
+        else:
+            self.input_file = input_file
+
+    def run(self):
+        run_radex(self.input_file, self.geometry)
+
+
+class Chunker(Runner):
+    """
+    Multiprocessing Runner sub-class to convert the radex input file into
+    temporary chunks, run RADEX, and merge the output back into a single RADEX
+    out-file.
 
     Parameters
     ----------
@@ -281,37 +320,6 @@ class Runner(object):
     """
     modulo_lines = 11
 
-    def __init__(self, model):
-        self.model = model
-
-    def _write_error_log(self):
-        with open(self.model.filen + '.log', 'w') as f:
-            f.write(self.error_log)
-
-    def run_single(self, input_file):
-        logfile = NamedTemporaryFile(mode='w', delete=True)
-        cmd = '{radex} < {input_file} > {logfile}'.format(
-            radex=RADEX_PATHS[self.model.geometry],
-            input_file=input_file,
-            logfile=logfile.name)
-        result = subprocess.call(cmd, shell=True)
-        if result != 0:
-            print 'RADEX returned error code {0}.'.format(result)
-            with open(logfile.name, 'r') as f:
-                self.error_log = f.read()
-            self._write_error_log()
-        logfile.close()
-
-    def run(self):
-        self.run_single(self.model.filen + '.inp')
-
-
-class Chunker(Runner):
-    """
-    Multiprocessing Runner sub-class to convert the radex input file into
-    temporary chunks, run RADEX, and merge the output back into a single RADEX
-    out-file.
-    """
     def __init__(self, model):
         super(Chunker, self).__init__(model)
         self.full_input = model.filen + '.inp'
@@ -355,12 +363,12 @@ class Chunker(Runner):
         self.chunk_names = [c.name for c in chunk_files]
 
     def _run_chunks(self):
-        for name in self.chunk_names:
-            self.run_single(name)
-        #pool = Pool(processes=self.nprocs)
-        #results = pool.imap(_chunk_wrapper, zip(repeat(self), self.chunk_names))
-        #pool.close()
-        #pool.join()
+        params = [(input_file, geometry) for input_file, geometry in
+                  zip(self.chunk_names, repeat(self.geometry))]
+        pool = Pool(processes=self.nprocs)
+        pool.map(_runner_wrapper, params)
+        pool.close()
+        pool.join()
 
     def _merge(self):
         with open(self.model.filen + '.rdx', 'w') as out_file:
@@ -379,14 +387,6 @@ class Chunker(Runner):
         self._run_chunks()
         self._merge()
         self._close()
-
-
-def _chunk_wrapper(args):
-    # Function must be in top-level to be pickle-able for pool
-    # "args" hack because pool.starmap unavailable in py2
-    obj, filen = args
-    obj.run_single(filen)
-    return obj
 
 
 class Parser(object):
