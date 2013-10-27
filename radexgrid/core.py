@@ -287,9 +287,9 @@ def run_radex(input_file, geometry):
     if result != 0:
         print 'RADEX returned error code {0}.'.format(result)
         with open(logfile.name, 'r') as f:
-            self.error_log = f.read()
+            error_log = f.read()
         with open(os.path.basename(input_file) + '.log', 'w') as f:
-            f.write(self.error_log)
+            f.write(error_log)
     logfile.close()
 
 

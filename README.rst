@@ -72,19 +72,19 @@ the available methods. To use package builtins, simply run the
 ``mygrid.run_model()`` method and a python ``pandas.DataFrame`` will be
 returned with attributes for the grid properties.
 
-Here is an example use-case in an interactive IPython session for a 2x2x10 model grid
-over kinetic temperature, spatial density, and column density for HCO+. All
-transitions within the frequency interval are returned, ie J=4-3 and J=3-2.
-Multi-processing is supported through the ``nprocs`` keyword for the number of
-processes to spawn.  Please see the documentation for description of the
-specific calling calling sequence.
+Here is an example use-case in an interactive IPython session for a 10x10x10
+model grid over kinetic temperature, spatial density, and column density for
+HCO+. All transitions within the frequency interval are returned, ie J=4-3 and
+J=3-2.  Multi-processing is supported through the ``nprocs`` keyword for the
+number of processes to spawn.  Please see the documentation for description of
+the specific calling calling sequence.
 
 .. code-block:: python
 
     In [1]: import radexgrid
 
     In [2]: rg = radexgrid.RadexGrid(molecule='hco+', freq=(200,400),
-      ....: tkin=(10,20,2,'lin'), dens=(1e3,1e4,2,'lin'),
+      ....: tkin=(10,20,10,'lin'), dens=(1e3,1e4,10,'lin'),
       ....: column_density=(1e12,1e14,10,'log'), colliders='H2', nprocs=4)
 
     In [3]: df = rg.run_model()
