@@ -35,9 +35,9 @@ Download the code from GitHub:
     $ git clone git://github.com/autocorr/radexgrid
     $ cd radexgrid
 
-Edit the ``radexgrid.cfg`` configuration file in the cloned directory or a copy
-as ``~/.radexgrid.cfg`` in your home directory with names or paths to the ``RADEX``
-binaries and the directory name where the molecular datafiles are stored.
+Copy the ``radexgrid.cfg`` configuration file in the cloned directory to
+``~/.radexgrid.cfg`` in your home directory with the names or paths to the
+``RADEX`` binaries and the directory where the molecular datafiles are stored.
 
 .. code-block::
 
@@ -48,11 +48,15 @@ binaries and the directory name where the molecular datafiles are stored.
     data_path = /path/to/moldata/
 
 
-Finally, install the package:
+The default configuration file above assumes that you have three separate
+``RADEX`` binaries in your shell's path. Finally, install the package:
 
 .. code-block::
 
     $ python setup.py install
+
+However, if you do need a system wide install, you can add the ``radexgrid``
+directory to your shell's ``PYTHONPATH``.
 
 Requirements
 ------------

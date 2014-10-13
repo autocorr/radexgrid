@@ -6,12 +6,12 @@ from .. import radexgrid
 
 def multi_transition():
     rg = radexgrid.RadexGrid(molecule='hco+', freq=(200, 400),
-                             tkin=(10, 20, 2), dens=(1e3, 1e4, 2),
+                             tkin=(10, 20, 2, 'lin'), dens=(1e3, 1e4, 2, 'lin'),
                              colliders=('H2',))
 
 def multi_procs():
     rg = radexgrid.RadexGrid(molecule='hco+', freq=(200, 400),
-                             tkin=(10, 20, 2), dens=(1e3, 1e4, 2),
+                             tkin=(10, 20, 2, 'lin'), dens=(1e3, 1e4, 2, 'lin'),
                              colliders=('H2',), nprocs=2)
 
 def null_columns():
@@ -20,7 +20,7 @@ def null_columns():
 
 
 if __name__ == '__main__':
-    multi_transitions()
+    multi_transition()
     multi_procs()
     null_columns()
 

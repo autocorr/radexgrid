@@ -98,8 +98,8 @@ class RadexGrid(object):
     Examples
     --------
         >>> import radexgrid
-        >>> rg = radexgrid.RadexGrid(molecule='hco+', freq=(200,400),
-        ... tkin=(10,20,2), dens=(1e3,1e4,2), colliders=('H2',))
+        >>> rg = radexgrid.RadexGrid(molecule='hco+', freq=(200, 400),
+        ... tkin=(10, 20, 2, 'lin'), dens=(1e3, 1e4, 2, 'lin'), colliders=('H2',))
         >>> df = rg.run_model()
         >>> df.head()
         >>> df.meta
@@ -221,7 +221,7 @@ class RadexGrid(object):
         for grid_point in product(*axes):
             self.model_params.append(grid_point)
             tkin, dens, tbg, column_density, linewidth, collider = grid_point
-            input_items = [DATA_PATH + self.molecule + '.dat',
+            input_items = [os.path.join(DATA_PATH, self.molecule) + '.dat',
                            self.filen + '.rdx',
                            '{0} {1}'.format(*self.freq),
                            tkin,
@@ -298,7 +298,7 @@ def _runner_wrapper(args):
     return run_radex(*args)
 
 
-class Runner(object):
+class BaseRunner(object):
     """
     Runner base-class to call the RADEX executable for the grid input-file. If
     called will run RADEX without multiprocessing support.
@@ -315,7 +315,7 @@ class Runner(object):
         run_radex(self.input_file, self.geometry)
 
 
-class Chunker(Runner):
+class Chunker(BaseRunner):
     """
     Multiprocessing Runner sub-class to convert the radex input file into
     temporary chunks, run RADEX, and merge the output back into a single RADEX

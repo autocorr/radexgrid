@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # encoding: utf-8
-
+import sys
 from distutils.command.build_py import build_py
 from radexgrid import __version__ as version
 
